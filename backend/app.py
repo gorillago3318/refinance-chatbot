@@ -3,6 +3,7 @@
 from flask import Flask, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
+import os
 import logging
 
 from extensions import db, migrate, jwt, scheduler
@@ -22,7 +23,7 @@ def create_app():
 
     # Setup logging
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.DEBUG,  # Set to DEBUG for detailed logs
         format='%(asctime)s %(levelname)s %(name)s %(threadName)s : %(message)s'
     )
     logger = logging.getLogger(__name__)
@@ -57,4 +58,4 @@ def create_app():
 app = create_app()
 
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)

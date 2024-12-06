@@ -4,36 +4,43 @@ import os
 import requests
 import logging
 
+# Retrieve environment variables
+WHATSAPP_ACCESS_TOKEN = os.getenv('WHATSAPP_ACCESS_TOKEN')
+WHATSAPP_PHONE_NUMBER_ID = os.getenv('WHATSAPP_PHONE_NUMBER_ID')
+
 def send_whatsapp_message(to, message):
     """
-    Sends a WhatsApp message using the WhatsApp Business API.
-
-    Parameters:
-        to (str): Recipient's WhatsApp number in the format 'whatsapp:+1234567890'
-        message (str): Message body
+    Sends a WhatsApp message to the specified recipient.
     """
-    whatsapp_api_url = os.getenv('WHATSAPP_API_URL')  # e.g., https://graph.facebook.com/v13.0/YOUR_PHONE_NUMBER_ID/messages
-    access_token = os.getenv('WHATSAPP_ACCESS_TOKEN')  # Your access token
+    if not WHATSAPP_PHONE_NUMBER_ID:
+        logging.error("WhatsApp Phone Number ID is not set in environment variables.")
+        return
+
+    if not WHATSAPP_ACCESS_TOKEN:
+        logging.error("WhatsApp Access Token is not set in environment variables.")
+        return
+
+    # Construct the API URL dynamically
+    url = f'https://graph.facebook.com/v13.0/{WHATSAPP_PHONE_NUMBER_ID}/messages'
 
     headers = {
-        "Authorization": f"Bearer {access_token}",
-        "Content-Type": "application/json"
+        'Authorization': f'Bearer {WHATSAPP_ACCESS_TOKEN}',
+        'Content-Type': 'application/json'
     }
 
     payload = {
         "messaging_product": "whatsapp",
         "to": to,
-        "type": "text",
         "text": {
             "body": message
         }
     }
 
     try:
-        response = requests.post(whatsapp_api_url, headers=headers, json=payload)
+        response = requests.post(url, headers=headers, json=payload)
         response.raise_for_status()
-        logging.info(f"Sent message to {to}: {message}")
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        logging.error(f"Failed to send message to {to}: {e}")
-        return {"error": str(e)}
+        logging.info(f"Message sent to {to}: {message}")
+    except requests.exceptions.HTTPError as http_err:
+        logging.error(f"HTTP error occurred while sending message to {to}: {http_err} - Response: {response.text}")
+    except Exception as err:
+        logging.error(f"An error occurred while sending message to {to}: {err}")
