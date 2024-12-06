@@ -47,8 +47,6 @@ def verify_webhook(req):
     token = req.args.get('hub.verify_token')
     challenge = req.args.get('hub.challenge')
 
-    current_app.logger.debug(f"Webhook verification attempt: mode={mode}, token={token}, challenge={challenge}")
-
     if mode and token:
         if mode == 'subscribe' and token == verify_token:
             current_app.logger.info('WEBHOOK_VERIFIED')
@@ -95,19 +93,23 @@ def handle_incoming_message(req):
             return jsonify({"status": "preset answer sent"}), 200
 
     # If no preset answer, process the message with GPT-3
-    try:
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant for refinancing loans."},
-                {"role": "user", "content": text}
-            ]
-        )
-        bot_reply = response.choices[0].message['content'].strip()
-        current_app.logger.info(f"Sending GPT-3 generated answer to {from_number}")
-    except openai.error.OpenAIError as e:
-        current_app.logger.error(f"OpenAI API error: {e}")
+    if not openai.api_key:
+        current_app.logger.error("OpenAI API key is not set. Please set OPENAI_API_KEY in your .env file.")
         bot_reply = "I'm sorry, I'm having trouble processing your request at the moment."
+    else:
+        try:
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant for refinancing loans."},
+                    {"role": "user", "content": text}
+                ]
+            )
+            bot_reply = response.choices[0].message['content'].strip()
+            current_app.logger.info(f"Sending GPT-3 generated answer to {from_number}")
+        except openai.error.OpenAIError as e:
+            current_app.logger.error(f"OpenAI API error: {e}")
+            bot_reply = "I'm sorry, I'm having trouble processing your request at the moment."
 
     # Send the reply back to the user via WhatsApp
     send_whatsapp_message(from_number, bot_reply)
